@@ -43,14 +43,14 @@ type personne_dist struct {
 
 }
 
-func Newpersonne_emp() personne_emp {
+/*func Newpersonne_emp() personne_emp {
 	paquet := personne_emp{}
 	paquet.statut = "V"
 	paquet.afaire = []func(){}
 	rand.Seed(time.Now().Unix())
 	paquet.numero_ligne = rand.Intn(TAILLE_SOURCE)
 	return paquet
-}
+}*/
 
 // interface des personnes manipulees par les ouvriers, les
 type personne_int interface {
