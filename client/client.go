@@ -160,7 +160,11 @@ func lecteur(data chan tuple) {
 			panic("Numero de ligne incorrect, erreur dans lecteur")
 		}
 		ligne := lignes[tuple.ligne-1]
-		tuple.retourChan <- ligne
+		premiereChaine := ""
+		if len(ligne) > 0 {
+			premiereChaine = ligne[0]
+		}
+		tuple.retourChan <- premiereChaine // Sinon erreur bete car String[] != String
 	}
 }
 
