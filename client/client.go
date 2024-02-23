@@ -7,27 +7,48 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+	st "tme4-squelette/client/structures"
 )
 
-var ADRESSE string = "localhost"                           // adresse de base pour la Partie 2
-var FICHIER_SOURCE string = "./conseillers-municipaux.txt" // fichier dans lequel piocher des personnes
-var TAILLE_SOURCE int = 450000                             // inferieure au nombre de lignes du fichier, pour prendre une ligne au hasard
-var TAILLE_G int = 5                                       // taille du tampon des gestionnaires
-var NB_G int = 2                                           // nombre de gestionnaires
-var NB_P int = 2                                           // nombre de producteurs
-var NB_O int = 4                                           // nombre d'ouvriers
-var NB_PD int = 2                                          // nombre de producteurs distants pour la Partie 2
+var ADRESSE string = "localhost"                       // adresse de base pour la Partie 2
+var FICHIER_SOURCE string = "./elus-municipaux-cm.csv" // fichier dans lequel piocher des personnes
+var TAILLE_SOURCE int = 493900                         // inferieure au nombre de lignes du fichier, pour prendre une ligne au hasard
+var TAILLE_G int = 5                                   // taille du tampon des gestionnaires
+var NB_G int = 2                                       // nombre de gestionnaires
+var NB_P int = 2                                       // nombre de producteurs
+var NB_O int = 4                                       // nombre d'ouvriers
+var NB_PD int = 2                                      // nombre de producteurs distants pour la Partie 2
 
 var pers_vide = st.Personne{Nom: "", Prenom: "", Age: 0, Sexe: "M"} // une personne vide
+
+type tuple struct {
+	ligne      int
+	retourChan chan string
+}
 
 // paquet de personne, sur lequel on peut travailler, implemente l'interface personne_int
 type personne_emp struct {
 	// A FAIRE
+	numero_ligne int
+	statut       string
+	personne     st.Personne
+	afaire       []func()
+	ligne_retour chan tuple
 }
 
 // paquet de personne distante, pour la Partie 2, implemente l'interface personne_int
 type personne_dist struct {
-	// A FAIRE
+	//A Faire
+
+}
+
+func Newpersonne_emp() personne_emp {
+	paquet := personne_emp{}
+	paquet.statut = "V"
+	paquet.afaire = []func(){}
+	rand.Seed(time.Now().Unix())
+	paquet.numero_ligne = rand.Intn(TAILLE_SOURCE)
+	return paquet
 }
 
 // interface des personnes manipulees par les ouvriers, les
@@ -53,7 +74,10 @@ func personne_de_ligne(l string) st.Personne {
 // *** METHODES DE L'INTERFACE personne_int POUR LES PAQUETS DE PERSONNES ***
 
 func (p *personne_emp) initialise() {
-	// A FAIRE
+	ch_retour := make(chan string)
+
+
+
 }
 
 func (p *personne_emp) travaille() {
@@ -96,7 +120,7 @@ func proxy() {
 }
 
 // Partie 1 : contacté par la méthode initialise() de personne_emp, récupère une ligne donnée dans le fichier source
-func lecteur() {
+func lecteur(data tuple chan) {
 	// A FAIRE
 }
 
