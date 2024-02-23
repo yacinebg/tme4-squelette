@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 	st "tme4-squelette/client/structures"
+	"tme4-squelette/client/travaux"
 )
 
 var ADRESSE string = "localhost"                       // adresse de base pour la Partie 2
@@ -32,7 +33,7 @@ type personne_emp struct {
 	numero_ligne int
 	statut       string
 	personne     st.Personne
-	afaire       []func()
+	afaire       []func(personne st.Personne) st.Personne
 	ligne_retour chan tuple
 }
 
@@ -75,13 +76,29 @@ func personne_de_ligne(l string) st.Personne {
 
 func (p *personne_emp) initialise() {
 	ch_retour := make(chan string)
+	tmp := tuple{ligne: p.numero_ligne,retourChan: ch_retour}
+	p.ligne_retour <- tmp
+	ligne_string := <- ch_retour
 
+	p.personne = personne_de_ligne(ligne_string)
+	rand.Seed(time.Now().Unix())
+	nb_alea_funs := rand.Intn(5) +1
+	for  i:= 0;i<nb_alea_funs;i++{
+		p.afaire = append(p.afaire,travaux.UnTravail())
+	}
 
-
+	p.statut = "R"
 }
 
 func (p *personne_emp) travaille() {
-	// A FAIRE
+	if(p.statut=="C" || p.statut=="V" || len(p.afaire)==0){
+		panic("Probleme, aucun travail ne devrait être effectué")
+	}
+	p.personne = p.afaire[0](p.personne)
+	if len(p.afaire)==0 {
+		p.afaire = p.afaire[1:]
+	}
+
 }
 
 func (p *personne_emp) vers_string() string {
