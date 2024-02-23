@@ -102,11 +102,13 @@ func (p *personne_emp) travaille() {
 }
 
 func (p *personne_emp) vers_string() string {
-	// A FAIRE
+	res := "Nom : " + p.personne.Nom + "\n Prenom : " + p.personne.Prenom + " \n Age : " + fmt.Sprint(p.personne.Age) + "\n Sexe : " + p.personne.Sexe
+	return res
 }
 
 func (p *personne_emp) donne_statut() string {
 	// A FAIRE
+	return p.statut
 }
 
 // *** METHODES DE L'INTERFACE personne_int POUR LES PAQUETS DE PERSONNES DISTANTES (PARTIE 2) ***
