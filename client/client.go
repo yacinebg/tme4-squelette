@@ -1,8 +1,9 @@
 package main
 
 import (
-	"encoding/csv"
+	"bufio"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"regexp"
@@ -13,7 +14,7 @@ import (
 
 var ADRESSE string = "localhost"                       // adresse de base pour la Partie 2
 var FICHIER_SOURCE string = "./elus-municipaux-cm.csv" // fichier dans lequel piocher des personnes
-var TAILLE_SOURCE int = 493900                         // inferieure au nombre de lignes du fichier, pour prendre une ligne au hasard
+var TAILLE_SOURCE int = 450000                         // inferieure au nombre de lignes du fichier, pour prendre une ligne au hasard
 const TAILLE_G int = 5                                 // taille du tampon des gestionnaires
 const NB_G int = 2                                     // nombre de gestionnaires
 var NB_P int = 2                                       // nombre de producteurs
@@ -63,13 +64,13 @@ type personne_int interface {
 // fabrique une personne à partir d'une ligne du fichier des conseillers municipaux
 // à changer si un autre fichier est utilisé
 func personne_de_ligne(l string) st.Personne {
-	separateur := regexp.MustCompile("\u0009") // oui, les donnees sont separees par des tabulations ... merci la Republique Francaise
+	separateur := regexp.MustCompile(",") // oui, les donnees sont separees par des tabulations ... merci la Republique Francaise
 	separation := separateur.Split(l, -1)
-	naiss, _ := time.Parse("2/1/2006", separation[7])
+	naiss, _ := time.Parse("2/1/2006", separation[9])
 	a1, _, _ := time.Now().Date()
 	a2, _, _ := naiss.Date()
 	agec := a1 - a2
-	return st.Personne{Nom: separation[4], Prenom: separation[5], Sexe: separation[6], Age: agec}
+	return st.Personne{Nom: separation[6], Prenom: separation[7], Sexe: separation[8], Age: agec}
 }
 
 // *** METHODES DE L'INTERFACE personne_int POUR LES PAQUETS DE PERSONNES ***
@@ -87,6 +88,7 @@ func (p *personne_emp) initialise() {
 		p.afaire = append(p.afaire, travaux.UnTravail())
 	}
 	p.statut = "R"
+
 }
 
 func (p *personne_emp) travaille() {
@@ -142,33 +144,25 @@ func proxy() {
 
 // Partie 1 : contacté par la méthode initialise() de personne_emp, récupère une ligne donnée dans le fichier source
 func lecteur(data chan tuple) {
-	fichier, err := os.Open(FICHIER_SOURCE)
-	if err != nil {
-		fmt.Println("Erreur lors de l'ouverture du fichier :", err)
-		return
-	}
-	defer fichier.Close()
-
-	// Créer un lecteur CSV
-	lecteurCSV := csv.NewReader(fichier)
-
-	// Lire toutes les lignes
-	lignes, err := lecteurCSV.ReadAll()
-	if err != nil {
-		fmt.Println("Erreur lors de la lecture du fichier CSV :", err)
-		return
-	}
 	for {
-		tuple := <-data
-		if tuple.ligne <= 0 || tuple.ligne > len(lignes) {
-			panic("Numero de ligne incorrect, erreur dans lecteur")
+		fichier, err := os.Open(FICHIER_SOURCE)
+		if err != nil {
+			log.Fatal(err)
 		}
-		ligne := lignes[tuple.ligne-1]
-		premiereChaine := ""
-		if len(ligne) > 0 {
-			premiereChaine = ligne[0]
+		defer fichier.Close()
+		scanner := bufio.NewScanner(fichier)
+		_ = scanner.Scan()
+		msg := <-data
+		var i = 0
+		for scanner.Scan() {
+			ligne := scanner.Text()
+			if i == msg.ligne {
+				msg.retourChan <- ligne
+				break
+			}
+			i++
+			// Le programme se bloque ici
 		}
-		tuple.retourChan <- premiereChaine // Sinon erreur bete car String[] != String
 	}
 }
 
@@ -180,13 +174,15 @@ func ouvrier(gestionnaires chan personne_int, collecteur chan personne_int) {
 	// A FAIRE
 	for {
 		pers := <-gestionnaires
+		fmt.Println(pers.vers_string())
+
 		if pers.donne_statut() == "V" {
 			pers.initialise()
 			gestionnaires <- pers
 		} else if pers.donne_statut() == "R" {
 			pers.travaille()
 			gestionnaires <- pers
-		} else {
+		} else if pers.donne_statut() == "C" {
 			collecteur <- pers
 		}
 	}
@@ -206,7 +202,9 @@ func producteur(ligne_retourChan chan tuple, gestionnaire_chan chan personne_int
 			afaire:       []func(personne st.Personne) st.Personne{},
 			ligne_retour: ligne_retourChan,
 		}
+
 		gestionnaire_chan <- personne_int(&p)
+
 	}
 }
 
@@ -242,6 +240,7 @@ func gestionnaire(producteurs chan personne_int, ouvriers chan personne_int) {
 		go func() {
 			ouvriers <- file[0]
 			file = file[:1]
+
 		}()
 	}
 }
@@ -250,14 +249,14 @@ func gestionnaire(producteurs chan personne_int, ouvriers chan personne_int) {
 // quand il recoit un signal de fin du temps, il imprime son journal.
 func collecteur(collecteur chan personne_int, fintemps chan int) {
 	// A FAIRE
-	str_res := "coucou"
+	str_res := ""
 	for {
 		select {
 		case personne := <-collecteur:
 			str_res += personne.vers_string() + "\n"
-		case end := <-fintemps:
-			fmt.Println("tempsAAAAAAAAAAAAAAAAAAAAAAA : ", end)
-			fmt.Println(str_res)
+		case _ = <-fintemps:
+			//fmt.Println(str_res)
+			fintemps <- 0
 		}
 
 	}
@@ -276,7 +275,6 @@ func main() {
 	// A FAIRE
 	// creer les canaux
 	can_gest := make(chan personne_int)
-	can_prod := make(chan personne_int)
 	can_ouvrier := make(chan personne_int)
 	can_lecteur := make(chan tuple)
 	can_collecteur := make(chan personne_int)
@@ -289,18 +287,18 @@ func main() {
 	}()
 	for i := 0; i < NB_G; i++ {
 		go func() {
-			gestionnaire(can_prod, can_ouvrier)
+			gestionnaire(can_gest, can_ouvrier)
 		}()
 	}
 	for i := 0; i < NB_P; i++ {
 		go func() {
-			producteur(can_lecteur, can_prod)
+			producteur(can_lecteur, can_gest)
 		}()
 
 	}
 	for i := 0; i < NB_O; i++ {
 		go func() {
-			ouvrier(can_gest, can_collecteur)
+			ouvrier(can_ouvrier, can_collecteur)
 		}()
 	}
 
@@ -308,5 +306,6 @@ func main() {
 	time.Sleep(duree)
 
 	fintemps <- 0
+	<-fintemps
 	return
 }
