@@ -18,7 +18,7 @@ var TAILLE_SOURCE int = 450000                         // inferieure au nombre d
 const TAILLE_G int = 5                                 // taille du tampon des gestionnaires
 const NB_G int = 2                                     // nombre de gestionnaires
 var NB_P int = 2                                       // nombre de producteurs
-var NB_O int = 4                                       // nombre d'ouvriers
+var NB_O int = 2                                       // nombre d'ouvriers
 var NB_PD int = 2                                      // nombre de producteurs distants pour la Partie 2
 
 var pers_vide = st.Personne{Nom: "", Prenom: "", Age: 0, Sexe: "M"} // une personne vide
@@ -174,8 +174,7 @@ func ouvrier(gestionnaires chan personne_int, collecteur chan personne_int) {
 	// A FAIRE
 	for {
 		pers := <-gestionnaires
-		fmt.Println(pers.vers_string())
-
+		fmt.Println("On a reçu : ", pers.vers_string())
 		if pers.donne_statut() == "V" {
 			pers.initialise()
 			gestionnaires <- pers
