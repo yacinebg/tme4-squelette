@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"math/rand"
 	"os"
@@ -76,26 +77,25 @@ func personne_de_ligne(l string) st.Personne {
 
 func (p *personne_emp) initialise() {
 	ch_retour := make(chan string)
-	tmp := tuple{ligne: p.numero_ligne,retourChan: ch_retour}
+	tmp := tuple{ligne: p.numero_ligne, retourChan: ch_retour}
 	p.ligne_retour <- tmp
-	ligne_string := <- ch_retour
+	ligne_string := <-ch_retour
 
 	p.personne = personne_de_ligne(ligne_string)
 	rand.Seed(time.Now().Unix())
-	nb_alea_funs := rand.Intn(5) +1
-	for  i:= 0;i<nb_alea_funs;i++{
-		p.afaire = append(p.afaire,travaux.UnTravail())
+	nb_alea_funs := rand.Intn(5) + 1
+	for i := 0; i < nb_alea_funs; i++ {
+		p.afaire = append(p.afaire, travaux.UnTravail())
 	}
-
 	p.statut = "R"
 }
 
 func (p *personne_emp) travaille() {
-	if(p.statut=="C" || p.statut=="V" || len(p.afaire)==0){
+	if p.statut == "C" || p.statut == "V" || len(p.afaire) == 0 {
 		panic("Probleme, aucun travail ne devrait être effectué")
 	}
 	p.personne = p.afaire[0](p.personne)
-	if len(p.afaire)==0 {
+	if len(p.afaire) == 0 {
 		p.afaire = p.afaire[1:]
 	}
 
@@ -137,8 +137,31 @@ func proxy() {
 }
 
 // Partie 1 : contacté par la méthode initialise() de personne_emp, récupère une ligne donnée dans le fichier source
-func lecteur(data tuple chan) {
-	// A FAIRE
+func lecteur(data chan tuple) {
+	fichier, err := os.Open(FICHIER_SOURCE)
+	if err != nil {
+		fmt.Println("Erreur lors de l'ouverture du fichier :", err)
+		return
+	}
+	defer fichier.Close()
+
+	// Créer un lecteur CSV
+	lecteurCSV := csv.NewReader(fichier)
+
+	// Lire toutes les lignes
+	lignes, err := lecteurCSV.ReadAll()
+	if err != nil {
+		fmt.Println("Erreur lors de la lecture du fichier CSV :", err)
+		return
+	}
+	for {
+		tuple := <-data
+		if tuple.ligne <= 0 || tuple.ligne > len(lignes) {
+			panic("Numero de ligne incorrect, erreur dans lecteur")
+		}
+		ligne := lignes[tuple.ligne-1]
+		tuple.retourChan <- ligne
+	}
 }
 
 // Partie 1: récupèrent des personne_int depuis les gestionnaires, font une opération dépendant de donne_statut()
