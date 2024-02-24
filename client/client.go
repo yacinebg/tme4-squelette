@@ -41,7 +41,8 @@ type personne_emp struct {
 // paquet de personne distante, pour la Partie 2, implemente l'interface personne_int
 type personne_dist struct {
 	//A Faire
-
+	identifiant int
+	proxy_ident chan int
 }
 
 /*func Newpersonne_emp() personne_emp {
@@ -88,7 +89,6 @@ func (p *personne_emp) initialise() {
 		p.afaire = append(p.afaire, travaux.UnTravail())
 	}
 	p.statut = "R"
-
 }
 
 func (p *personne_emp) travaille() {
@@ -120,19 +120,20 @@ func (p *personne_emp) donne_statut() string {
 
 func (p personne_dist) initialise() {
 	// A FAIRE
+
 }
 
 func (p personne_dist) travaille() {
 	// A FAIRE
 }
 
-/*func (p personne_dist) vers_string() string {
+func (p personne_dist) vers_string() string {
 	// A FAIRE
 }
 
 func (p personne_dist) donne_statut() string {
 	// A FAIRE
-}*/
+}
 
 // *** CODE DES GOROUTINES DU SYSTEME ***
 
