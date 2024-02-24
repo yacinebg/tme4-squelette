@@ -161,7 +161,6 @@ func lecteur(data chan tuple) {
 				break
 			}
 			i++
-			// Le programme se bloque ici
 		}
 	}
 }
@@ -174,7 +173,6 @@ func ouvrier(gestionnaires chan personne_int, collecteur chan personne_int) {
 	// A FAIRE
 	for {
 		pers := <-gestionnaires
-		fmt.Println("On a reçu : ", pers.vers_string())
 		if pers.donne_statut() == "V" {
 			pers.initialise()
 			gestionnaires <- pers
@@ -254,7 +252,7 @@ func collecteur(collecteur chan personne_int, fintemps chan int) {
 		case personne := <-collecteur:
 			str_res += personne.vers_string() + "\n"
 		case _ = <-fintemps:
-			//fmt.Println(str_res)
+			fmt.Println(str_res)
 			fintemps <- 0
 		}
 
