@@ -28,6 +28,11 @@ type tuple struct {
 	retourChan chan string
 }
 
+type tuple_proxy struct{
+	methode string
+	id int
+}
+
 // paquet de personne, sur lequel on peut travailler, implemente l'interface personne_int
 type personne_emp struct {
 	// A FAIRE
@@ -42,7 +47,7 @@ type personne_emp struct {
 type personne_dist struct {
 	//A Faire
 	identifiant int
-	proxy_ident chan int
+	proxy_can chan tuple_proxy
 }
 
 /*func Newpersonne_emp() personne_emp {
@@ -120,27 +125,74 @@ func (p *personne_emp) donne_statut() string {
 
 func (p personne_dist) initialise() {
 	// A FAIRE
-
+	message_proxy := tuple_proxy{
+		methode:"initialise",
+		id:p.identifiant
+	}
+	p.proxy_can <- message_proxy
 }
 
 func (p personne_dist) travaille() {
 	// A FAIRE
+	message_proxy := tuple_proxy{
+		methode:"travaille",
+		id:p.identifiant
+	}
+	p.proxy_can <- message_proxy
 }
 
 func (p personne_dist) vers_string() string {
 	// A FAIRE
+	message_proxy := tuple_proxy{
+		methode:"vers_string",
+		id:p.identifiant
+	}
+	p.proxy_can <- message_proxy
 }
 
 func (p personne_dist) donne_statut() string {
 	// A FAIRE
+	message_proxy := tuple_proxy{
+		methode:"donne_statut",
+		id:p.identifiant
+	}
+	p.proxy_can <- message_proxy
 }
 
 // *** CODE DES GOROUTINES DU SYSTEME ***
 
 // Partie 2: contacté par les méthodes de personne_dist, le proxy appelle la méthode à travers le réseau et récupère le résultat
 // il doit utiliser une connection TCP sur le port donné en ligne de commande
-func proxy() {
+func proxy(port string, proxy_can chan tuple_proxy) {
 	// A FAIRE
+	conn,err :=net.Dial("tcp","localhost:"+port)
+	if err != nil {
+		log.Fatal("Erreur lors de la connexion au serveur:", err)
+	}
+	defer conn.Close()
+	for{
+		tuple <- proxy_can
+		methode := tuple.methode
+		id := tuple.identifiant
+
+		// Construire le message à envoyer au serveur
+		message := fmt.Sprintf("%s,%d\n", id, methode)
+		_, err := conn.Write([]byte(message))
+		if err != nil {
+			log.Println("Erreur lors de l'envoi du message au serveur:", err)
+			continue
+		}
+		
+		buffer := make([]byte,1024)
+		n,err:=conn.Read(buffer)
+		if err != nil {
+			log.Println("Erreur lors de l'envoi du message au serveur:", err)
+			continue
+		}
+
+		rep := string(buffer[:n])
+		fmt.Println("Reponse du serveur : ",rep)
+	}
 }
 
 // Partie 1 : contacté par la méthode initialise() de personne_emp, récupère une ligne donnée dans le fichier source
@@ -209,8 +261,13 @@ func producteur(ligne_retourChan chan tuple, gestionnaire_chan chan personne_int
 // Partie 2: les producteurs distants cree des personne_int implementees par des personne_dist qui contiennent un identifiant unique
 // utilisé pour retrouver l'object sur le serveur
 // la creation sur le client d'une personne_dist doit declencher la creation sur le serveur d'une "vraie" personne, initialement vide, de statut V
-func producteur_distant() {
+func producteur_distant(gestionnaire chan personne_int,proxy_channel chan tuple_proxy) {
 	// A FAIRE
+	for{
+		p := personne_dist{identifiant:id,proxy_can:proxy_channel}
+		proxy_channel <- tuple_proxy{identifiant:id,methode:"creer"}
+		gestionnaire <- p		
+	}
 }
 
 // Partie 1: les gestionnaires recoivent des personne_int des producteurs et des ouvriers et maintiennent chacun une file de personne_int
@@ -276,6 +333,7 @@ func main() {
 	can_ouvrier := make(chan personne_int)
 	can_lecteur := make(chan tuple)
 	can_collecteur := make(chan personne_int)
+	can_proxy := make(chan tuple_proxy)
 	// lancer les goroutines (parties 1 et 2): 1 lecteur, 1 collecteur, des producteurs, des gestionnaires, des ouvriers
 	go func() {
 		lecteur(can_lecteur)
@@ -299,10 +357,17 @@ func main() {
 			ouvrier(can_ouvrier, can_collecteur)
 		}()
 	}
+	go func(){
+		proxy(port, can_proxy)
+	}()
+	for i:= 0; i < NB_PD; i++{
+		go func() {
+			producteur_distant(gestionnaire, can_proxy)
+		}()
+	}
 
 	// lancer les goroutines (partie 2): des producteurs distants, un proxy
 	time.Sleep(duree)
-
 	fintemps <- 0
 	<-fintemps
 	return
